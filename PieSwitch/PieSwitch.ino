@@ -31,30 +31,18 @@ int stateOutdated = 0;
 bool reply1 = true;
 bool reply2 = true;
 unsigned long timer = 0;
+unsigned long timeonpress1 = 0;
+unsigned long timeonpress2 = 0;
+int delayonpress = 700;
 
 WiFiClient client;
 
 MicroGear microgear(client);
 
-void sendState() {
-  if(reply1){ 
-    Serial.print("Sent state1 : ");
-    Serial.println(state1);
-    microgear.publish(SEND_TOPIC1,state1);
-    reply1 = false;
-  }
-  if(reply2){ 
-    Serial.print("Sent state2 : ");
-    Serial.println(state2);
-    microgear.publish(SEND_TOPIC2,state2);
-    reply2 = false;
-  }
-}
-
 void updateIO(int relaypin, int state, int index) {
   Serial.print("updatIO ");
   Serial.print(relaypin);
-  Serial.print(" : ");
+  Serial.print(" ---------------> ");
   Serial.println(state);
   
   if (state == 1) {
@@ -64,17 +52,35 @@ void updateIO(int relaypin, int state, int index) {
   }
 
   if(index==1){
-    Serial.print("EEPROM write address ");
-    Serial.println(EEPROM_STATE_ADDRESS_1);
+//    Serial.print("EEPROM write address ");
+//    Serial.println(EEPROM_STATE_ADDRESS_1);
     EEPROM.write(EEPROM_STATE_ADDRESS_1, state);
     EEPROM.commit();
   }else if(index==2){
-    Serial.print("EEPROM write address ");
-    Serial.println(EEPROM_STATE_ADDRESS_2);
+//    Serial.print("EEPROM write address ");
+//    Serial.println(EEPROM_STATE_ADDRESS_2);
     EEPROM.write(EEPROM_STATE_ADDRESS_2, state);
     EEPROM.commit();
   }
 }
+
+void sendState() {
+  if(reply1){ 
+    updateIO(RELAYPIN_1, state1, 1);
+    Serial.print("Sent state1 : ");
+    Serial.println(state1);
+    microgear.publish(SEND_TOPIC1,state1);
+    reply1 = false;
+  }
+  if(reply2){ 
+    updateIO(RELAYPIN_2, state2, 2);
+    Serial.print("Sent state2 : ");
+    Serial.println(state2);
+    microgear.publish(SEND_TOPIC2,state2);
+    reply2 = false;
+  }
+}
+
 /* If a new message arrives, do this */
 void onMsghandler(char *topic, uint8_t* msg, unsigned int msglen) {
     char m = *(char *)msg;
@@ -128,23 +134,27 @@ void initWiFi(){
 }
 
 static void onButtonPressed1(void) {
-    Serial.println("Button Pressed");
-    if (state1 == 1) state1 = 0;
-    else state1 = 1;
-    
-    updateIO(RELAYPIN_1, state1, 1);
-    stateOutdated = 1;
-    reply1 = true;
+    Serial.println("Button Pressed 1");
+    if(millis()-timeonpress1 >= delayonpress){
+      if (state1 == 1) state1 = 0;
+      else state1 = 1;
+      
+      timeonpress1 = millis();
+      stateOutdated = 1;
+      reply1 = true;
+    }
 }
 
 static void onButtonPressed2(void) {
-    Serial.println("Button Pressed");
-    if (state2 == 1) state2 = 0;
-    else state2 = 1;
-    
-    updateIO(RELAYPIN_2, state2, 2);
-    stateOutdated = 1;
-    reply2 = true;
+    Serial.println("Button Pressed 2");
+    if(millis()-timeonpress2 >= delayonpress){
+      if (state2 == 1) state2 = 0;
+      else state2 = 1;
+
+      timeonpress2 = millis();
+      stateOutdated = 1;
+      reply2 = true;
+    }
 }
 
 void setup() {
