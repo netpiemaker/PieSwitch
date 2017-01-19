@@ -1,17 +1,10 @@
 /*  NETPIE ESP8266                                         */
 /*  More information visit : https://netpie.io             */
 
+#include "config.h"
 #include <ESP8266WiFi.h>
 #include <MicroGear.h>
 #include <EEPROM.h>
-
-const char* ssid     = <WIFI_SSID>;
-const char* password = <WIFI_KEY>;
-
-#define APPID   <APPID>
-#define KEY     <APPKEY>
-#define SECRET  <APPSECRET>
-#define ALIAS   "switch"
 
 #define SEND_TOPIC1 "/esprelay/state1"
 #define SEND_TOPIC2 "/esprelay/state2"
@@ -52,13 +45,9 @@ void updateIO(int relaypin, int state, int index) {
   }
 
   if(index==1){
-//    Serial.print("EEPROM write address ");
-//    Serial.println(EEPROM_STATE_ADDRESS_1);
     EEPROM.write(EEPROM_STATE_ADDRESS_1, state);
     EEPROM.commit();
   }else if(index==2){
-//    Serial.print("EEPROM write address ");
-//    Serial.println(EEPROM_STATE_ADDRESS_2);
     EEPROM.write(EEPROM_STATE_ADDRESS_2, state);
     EEPROM.commit();
   }
@@ -94,18 +83,35 @@ void onMsghandler(char *topic, uint8_t* msg, unsigned int msglen) {
     if (m == '0' || m == '1') {
       if((String)topic == CHECK_TOPIC1){
         state1 = m=='0'?0:1;
-        updateIO(RELAYPIN_1, state1, 1);
+        //updateIO(RELAYPIN_1, state1, 1);
         reply1 = true;
       }else if((String)topic == CHECK_TOPIC2){
         state2 = m=='0'?0:1;
-        updateIO(RELAYPIN_2, state2, 2);
+        //updateIO(RELAYPIN_2, state2, 2);
         reply2 = true;
       }
     }else if(m == '?'){
       if((String)topic == CHECK_TOPIC1) reply1 = true;
       else if((String)topic == CHECK_TOPIC2) reply2 = true;
+    }else {
+      if(m == 'f'){
+        if((String)topic == CHECK_TOPIC1) {
+          digitalWrite(RELAYPIN_1, HIGH);
+          delay(1000);
+          state1 = 0;
+          reply1 = true;
+          //updateIO(RELAYPIN_1, state1, 1);                      
+        }
+        else if((String)topic == CHECK_TOPIC2) {
+          digitalWrite(RELAYPIN_2, HIGH);
+          delay(1000);
+          state2 = 0;
+          reply2 = true;
+          //updateIO(RELAYPIN_2, state2, 1);                      
+        }
+      }
     }
-    if (m == '0' || m == '1' || m == '?') stateOutdated = 1;
+    if (m == '0' || m == '1' || m == '?' || m == 'f') stateOutdated = 1;
 }
 
 /* When a microgear is connected, do this */
@@ -197,7 +203,7 @@ void loop() {
     if(WiFi.status()!=WL_CONNECTED){
       WiFi.disconnect();
       initWiFi();
-    }else{
+    } else {
         /* To check if the microgear is still connected */
         if (microgear.connected()) {
     
